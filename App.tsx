@@ -4,6 +4,7 @@ import { B5_CONFIG, LINE_SPACING_OPTIONS } from './constants';
 import { AppState, ImageElement } from './types';
 import { polishText } from './services/geminiService';
 import Sidebar from './components/Sidebar';
+import PaperCanvas from './components/PaperCanvas';
 
 const App: React.FC = () => {
   const lineSpacing = LINE_SPACING_OPTIONS['8mm'];
@@ -185,168 +186,26 @@ const App: React.FC = () => {
       />
       <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={handleAddImage} />
 
-      {/* Editor Surface */}
-      <main className="flex-1 overflow-auto bg-slate-100 p-8 flex justify-center items-start">
-        <div 
-          className="paper-container relative bg-white shadow-[0_30px_60px_rgba(0,0,0,0.12)] origin-top"
-          style={{
-            width: `${B5_CONFIG.width}mm`,
-            height: `${B5_CONFIG.height}mm`,
-            minHeight: `${B5_CONFIG.height}mm`,
-            position: 'relative',
-          }}
-        >
-          {/* Hole punch visualization */}
-          {state.showHoles && (
-            <div
-              className={`paper-holes absolute top-0 h-full flex flex-col items-center py-[8mm] pointer-events-none no-print ${
-                state.isBackSide ? 'right-0 pr-[5mm]' : 'left-0 pl-[5mm]'
-              }`}
-            >
-              {Array.from({ length: 26 }).map((_, i) => (
-                <div key={i} className="w-[5mm] h-[5mm] rounded-full bg-slate-50 border border-slate-200 mb-[4.5mm] last:mb-0" />
-              ))}
-            </div>
-          )}
-
-          {/* Draggable Images */}
-          {state.images.map(img => (
-            <DraggableImage key={img.id} img={img} onRemove={() => removeImage(img.id)} onUpdate={updateImagePos} mmToPx={mmToPx} />
-          ))}
-
-          {/* Unified Flowing Editor Area */}
-          <div 
-            className="absolute overflow-hidden"
-            style={{
-              left: `${effectiveLeftMargin}mm`,
-              top: `${B5_CONFIG.topMargin}mm`,
-              right: `${effectiveRightMargin}mm`,
-              height: `${lineCount * currentLineSpacing}mm`,
-            }}
-          >
-            {/* Background Rules - Precise alignment with text */}
-            {state.showLines && (
-              <div 
-                className="absolute inset-0 pointer-events-none no-print"
-                style={{
-                  borderTop: '1px solid #dbeafe',
-                  borderBottom: '1px solid #dbeafe',
-                  backgroundImage: `linear-gradient(to bottom, #dbeafe 1px, transparent 1px)`,
-                  backgroundSize: `100% ${lineHeightPx}px`,
-                  backgroundPosition: `0 -1px`,
-                }}
-              />
-            )}
-            {state.showLines && (
-              <div className="absolute inset-0 pointer-events-none no-print">
-                {Array.from({ length: lineCount }).map((_, index) => {
-                  const lineNumber = index + 1;
-                  if (lineNumber % 5 !== 0) return null;
-                  return (
-                    <div
-                      key={lineNumber}
-                      className={`absolute text-[8px] leading-none text-slate-300 select-none ${
-                        state.isBackSide ? 'left-0' : 'right-0'
-                      }`}
-                      style={{
-                        top: `${lineNumber * lineHeightPx}px`,
-                        transform: 'translateY(-50%)',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {lineNumber}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Vertical Marker Line (Red margin line often found in Campus notebooks) */}
-            {state.showLines && (
-              <div
-                className={`absolute top-0 h-full w-[1px] bg-red-100 no-print ${
-                  state.isBackSide ? 'right-0' : 'left-0'
-                }`}
-                style={{ marginLeft: '0mm', marginRight: '0mm' }}
-              />
-            )}
-
-            <div 
-              ref={editorRef}
-              contentEditable
-              suppressContentEditableWarning
-              onInput={handleTextChange}
-              onCompositionStart={handleCompositionStart}
-              onCompositionEnd={handleCompositionEnd}
-              className="editor-content relative w-full h-full outline-none cursor-text whitespace-pre-wrap break-words"
-              style={{
-                lineHeight: `${lineHeightPx}px`,
-                fontSize: `${fontSizePx}px`,
-                fontFamily: state.fontFamily,
-                color: '#334155',
-                padding: 0,
-                margin: 0,
-              }}
-            />
-          </div>
-
-          {/* Bottom Limit visualization */}
-          {state.showLines && (
-             <div 
-              className="absolute bottom-0 w-full no-print opacity-10 border-t-2 border-dashed border-slate-400"
-              style={{ height: `${B5_CONFIG.bottomMargin}mm` }}
-            />
-          )}
-        </div>
-      </main>
-    </div>
-  );
-};
-
-interface DraggableImageProps {
-  img: ImageElement;
-  onRemove: () => void;
-  onUpdate: (id: string, x: number, y: number) => void;
-  mmToPx: number;
-}
-
-const DraggableImage: React.FC<DraggableImageProps> = ({ img, onRemove, onUpdate, mmToPx }) => {
-  const [isDragging, setIsDragging] = useState(false);
-  const [startPos, setStartPos] = useState({ x: 0, y: 0 });
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-    setStartPos({ x: e.clientX, y: e.clientY });
-  };
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isDragging) return;
-      const dx = (e.clientX - startPos.x) / mmToPx;
-      const dy = (e.clientY - startPos.y) / mmToPx;
-      onUpdate(img.id, img.x + dx, img.y + dy);
-      setStartPos({ x: e.clientX, y: e.clientY });
-    };
-    const handleMouseUp = () => setIsDragging(false);
-    if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
-    }
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isDragging, startPos, img, onUpdate, mmToPx]);
-
-  return (
-    <div 
-      className={`absolute group cursor-move select-none ${isDragging ? 'ring-2 ring-blue-500 z-50' : 'z-10'}`}
-      style={{ left: `${img.x}mm`, top: `${img.y}mm`, width: `${img.width}mm`, height: `${img.height}mm` }}
-      onMouseDown={handleMouseDown}
-    >
-      <img src={img.url} alt="User upload" className="w-full h-full object-contain" />
-      <button onClick={(e) => { e.stopPropagation(); onRemove(); }} className="no-print absolute -top-3 -right-3 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm opacity-0 group-hover:opacity-100 transition shadow-lg hover:bg-red-600">×</button>
+      <PaperCanvas
+        images={state.images}
+        showLines={state.showLines}
+        showHoles={state.showHoles}
+        isBackSide={state.isBackSide}
+        effectiveLeftMargin={effectiveLeftMargin}
+        effectiveRightMargin={effectiveRightMargin}
+        lineCount={lineCount}
+        currentLineSpacing={currentLineSpacing}
+        lineHeightPx={lineHeightPx}
+        fontSizePx={fontSizePx}
+        fontFamily={state.fontFamily}
+        mmToPx={mmToPx}
+        editorRef={editorRef}
+        onTextChange={handleTextChange}
+        onCompositionStart={handleCompositionStart}
+        onCompositionEnd={handleCompositionEnd}
+        onRemoveImage={removeImage}
+        onUpdateImage={updateImagePos}
+      />
     </div>
   );
 };
