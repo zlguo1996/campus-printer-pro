@@ -28,6 +28,7 @@ type PaperCanvasProps = {
   onRemoveImage: (id: string) => void;
   onUpdateImage: (id: string, x: number, y: number) => void;
   onUpdateForbiddenArea: (id: string, patch: Partial<ForbiddenArea>) => void;
+  onRemoveForbiddenArea: (id: string) => void;
 };
 
 const PaperCanvas: React.FC<PaperCanvasProps> = ({
@@ -51,6 +52,7 @@ const PaperCanvas: React.FC<PaperCanvasProps> = ({
   onRemoveImage,
   onUpdateImage,
   onUpdateForbiddenArea,
+  onRemoveForbiddenArea,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -185,6 +187,18 @@ const PaperCanvas: React.FC<PaperCanvasProps> = ({
                 contentEditable={false}
                 onMouseDown={(e) => handleForbiddenMouseDown(e, area)}
               >
+                <button
+                  className="forbidden-remove-button"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRemoveForbiddenArea(area.id);
+                  }}
+                  contentEditable={false}
+                  type="button"
+                >
+                  ×
+                </button>
                 <div
                   className="forbidden-resize-handle"
                   onMouseDown={(e) => handleResizeMouseDown(e, area)}

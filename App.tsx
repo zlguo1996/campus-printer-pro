@@ -17,15 +17,7 @@ const App: React.FC = () => {
   // Calculate line count based on margins
   const initialLineCount = useMemo(() => getLineCount(B5_CONFIG, lineSpacing), [lineSpacing]);
 
-  const defaultForbiddenAreas: ForbiddenArea[] = [
-    {
-      id: 'forbidden-1',
-      side: 'left',
-      top: 20,
-      width: 35,
-      height: 30,
-    },
-  ];
+  const defaultForbiddenAreas: ForbiddenArea[] = [];
 
   const defaultState: AppState = {
     text: '\n'.repeat(initialLineCount - 1),
@@ -155,6 +147,27 @@ const App: React.FC = () => {
     }));
   };
 
+  const addForbiddenArea = () => {
+    const newArea: ForbiddenArea = {
+      id: `forbidden-${Date.now()}`,
+      side: 'left',
+      top: 20,
+      width: 35,
+      height: 30,
+    };
+    setState(prev => ({
+      ...prev,
+      forbiddenAreas: [...prev.forbiddenAreas, newArea],
+    }));
+  };
+
+  const removeForbiddenArea = (id: string) => {
+    setState(prev => ({
+      ...prev,
+      forbiddenAreas: prev.forbiddenAreas.filter(area => area.id !== id),
+    }));
+  };
+
   return (
     <div className="flex flex-col md:flex-row h-screen overflow-hidden text-slate-800 font-sans">
       <Sidebar
@@ -164,6 +177,7 @@ const App: React.FC = () => {
         onFontSizeChange={(value) => setState(prev => ({ ...prev, fontSize: value }))}
         onSpacingChange={(key) => setState(prev => ({ ...prev, spacingKey: key }))}
         onAddImageClick={() => fileInputRef.current?.click()}
+        onAddForbiddenArea={addForbiddenArea}
         onToggleBackSide={(isBackSide) => setState(prev => ({ ...prev, isBackSide }))}
         onToggleLines={(value) => setState(prev => ({ ...prev, showLines: value }))}
         onToggleHoles={(value) => setState(prev => ({ ...prev, showHoles: value }))}
@@ -193,6 +207,7 @@ const App: React.FC = () => {
         onRemoveImage={removeImage}
         onUpdateImage={updateImagePos}
         onUpdateForbiddenArea={updateForbiddenArea}
+        onRemoveForbiddenArea={removeForbiddenArea}
       />
     </div>
   );
