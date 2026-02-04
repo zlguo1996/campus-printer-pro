@@ -5,6 +5,7 @@ import { AppState, ImageElement } from './types';
 import { polishText } from './services/geminiService';
 import Sidebar from './components/Sidebar';
 import PaperCanvas from './components/PaperCanvas';
+import useEditorText from './hooks/useEditorText';
 
 const App: React.FC = () => {
   const lineSpacing = LINE_SPACING_OPTIONS['8mm'];
@@ -58,9 +59,7 @@ const App: React.FC = () => {
   });
 
   const [isAiProcessing, setIsAiProcessing] = useState(false);
-  const isComposing = useRef(false); // Ref to track IME state
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const editorRef = useRef<HTMLDivElement>(null);
 
   const currentLineSpacing = LINE_SPACING_OPTIONS[state.spacingKey];
   const mmToPx = 3.78; 
@@ -74,24 +73,6 @@ const App: React.FC = () => {
     return Math.floor(availableHeight / currentLineSpacing);
   }, [currentLineSpacing]);
 
-  // Sync initial text and adjustments when rules change
-  useEffect(() => {
-    if (editorRef.current) {
-      // Only set initial text if both editor and state are empty
-      if (editorRef.current.innerText.trim() === '' && state.text.trim() === '') {
-        const initialText = '\n'.repeat(lineCount - 1);
-        editorRef.current.innerText = initialText;
-        setState(prev => ({ ...prev, text: initialText }));
-      }
-    }
-  }, [lineCount]);
-
-  useEffect(() => {
-    if (editorRef.current && editorRef.current.innerText.trim() === '' && state.text.trim() !== '') {
-      editorRef.current.innerText = state.text;
-    }
-  }, []);
-
   useEffect(() => {
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -100,24 +81,16 @@ const App: React.FC = () => {
     }
   }, [state]);
 
-  const handleCompositionStart = () => {
-    isComposing.current = true;
-  };
-
-  const handleCompositionEnd = (e: React.CompositionEvent<HTMLDivElement>) => {
-    isComposing.current = false;
-    // After composition ends, we manually trigger the state update
-    const newText = (e.target as HTMLDivElement).innerText;
-    setState(prev => ({ ...prev, text: newText }));
-  };
-
-  const handleTextChange = (e: React.FormEvent<HTMLDivElement>) => {
-    // We only update the React state if the user is NOT in the middle of an IME composition
-    if (!isComposing.current) {
-      const newText = e.currentTarget.innerText;
-      setState(prev => ({ ...prev, text: newText }));
-    }
-  };
+  const {
+    editorRef,
+    handleCompositionStart,
+    handleCompositionEnd,
+    handleTextChange,
+  } = useEditorText({
+    lineCount,
+    text: state.text,
+    setState,
+  });
 
   const handleAddImage = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
