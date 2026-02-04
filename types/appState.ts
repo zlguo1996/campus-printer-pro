@@ -16,4 +16,13 @@ export interface AppState {
   showLines: boolean;
   showHoles: boolean;
   isBackSide: boolean;
+  forbiddenAreas: ForbiddenArea[];
+}
+
+export interface ForbiddenArea {
+  id: string;
+  side: 'left' | 'right';
+  top: number; // in mm
+  width: number; // in mm
+  height: number; // in mm
 }

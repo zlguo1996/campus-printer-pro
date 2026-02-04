@@ -1,6 +1,6 @@
 import React from 'react';
 import { B5_CONFIG } from '../constants';
-import { ImageElement } from '../types';
+import { ForbiddenArea, ImageElement } from '../types';
 import DraggableImage from './DraggableImage';
 import HolesLayer from './layers/HolesLayer';
 import LineNumberLayer from './layers/LineNumberLayer';
@@ -9,6 +9,7 @@ import RuleLinesLayer from './layers/RuleLinesLayer';
 
 type PaperCanvasProps = {
   images: ImageElement[];
+  forbiddenAreas: ForbiddenArea[];
   showLines: boolean;
   showHoles: boolean;
   isBackSide: boolean;
@@ -30,6 +31,7 @@ type PaperCanvasProps = {
 
 const PaperCanvas: React.FC<PaperCanvasProps> = ({
   images,
+  forbiddenAreas,
   showLines,
   showHoles,
   isBackSide,
@@ -89,23 +91,37 @@ const PaperCanvas: React.FC<PaperCanvasProps> = ({
           />
           <RedMarginLine show={showLines} isBackSide={isBackSide} />
 
-          <div
-            ref={editorRef}
-            contentEditable
-            suppressContentEditableWarning
-            onInput={onTextChange}
-            onCompositionStart={onCompositionStart}
-            onCompositionEnd={onCompositionEnd}
-            className="editor-content relative w-full h-full outline-none cursor-text whitespace-pre-wrap break-words"
-            style={{
-              lineHeight: `${lineHeightPx}px`,
-              fontSize: `${fontSizePx}px`,
-              fontFamily,
-              color: '#334155',
-              padding: 0,
-              margin: 0,
-            }}
-          />
+          <div className="relative w-full h-full">
+            {forbiddenAreas.map(area => (
+              <div
+                key={area.id}
+                className={`forbidden-area no-print ${area.side === 'left' ? 'float-left' : 'float-right'}`}
+                style={{
+                  width: `${area.width}mm`,
+                  height: `${area.height}mm`,
+                  marginTop: `${area.top}mm`,
+                }}
+                contentEditable={false}
+              />
+            ))}
+            <div
+              ref={editorRef}
+              contentEditable
+              suppressContentEditableWarning
+              onInput={onTextChange}
+              onCompositionStart={onCompositionStart}
+              onCompositionEnd={onCompositionEnd}
+              className="editor-content relative w-full h-full outline-none cursor-text whitespace-pre-wrap break-words"
+              style={{
+                lineHeight: `${lineHeightPx}px`,
+                fontSize: `${fontSizePx}px`,
+                fontFamily,
+                color: '#334155',
+                padding: 0,
+                margin: 0,
+              }}
+            />
+          </div>
         </div>
 
         {showLines && (

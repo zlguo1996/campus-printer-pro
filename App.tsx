@@ -1,7 +1,7 @@
 
 import React, { useRef, useMemo, useState } from 'react';
 import { B5_CONFIG, LINE_SPACING_OPTIONS } from './constants';
-import { AppState, ImageElement } from './types';
+import { AppState, ForbiddenArea, ImageElement } from './types';
 import { polishText } from './services/geminiService';
 import Sidebar from './components/Sidebar';
 import PaperCanvas from './components/PaperCanvas';
@@ -17,6 +17,16 @@ const App: React.FC = () => {
   // Calculate line count based on margins
   const initialLineCount = useMemo(() => getLineCount(B5_CONFIG, lineSpacing), [lineSpacing]);
 
+  const defaultForbiddenAreas: ForbiddenArea[] = [
+    {
+      id: 'forbidden-1',
+      side: 'left',
+      top: 20,
+      width: 35,
+      height: 30,
+    },
+  ];
+
   const defaultState: AppState = {
     text: '\n'.repeat(initialLineCount - 1),
     fontSize: 14,
@@ -26,6 +36,7 @@ const App: React.FC = () => {
     showLines: true,
     showHoles: true,
     isBackSide: false,
+    forbiddenAreas: defaultForbiddenAreas,
   };
 
   const [state, setState] = useLocalStorageState<AppState>(
@@ -38,6 +49,16 @@ const App: React.FC = () => {
           parsed?.spacingKey === '8mm' || parsed?.spacingKey === '7mm' || parsed?.spacingKey === '6mm'
             ? parsed.spacingKey
             : defaultState.spacingKey;
+        const forbiddenAreas = Array.isArray(parsed?.forbiddenAreas)
+          ? parsed.forbiddenAreas.filter((area: ForbiddenArea) => (
+              area &&
+              (area.side === 'left' || area.side === 'right') &&
+              typeof area.top === 'number' &&
+              typeof area.width === 'number' &&
+              typeof area.height === 'number' &&
+              typeof area.id === 'string'
+            ))
+          : defaultForbiddenAreas;
         return {
           ...defaultState,
           ...parsed,
@@ -49,6 +70,7 @@ const App: React.FC = () => {
           showLines: typeof parsed?.showLines === 'boolean' ? parsed.showLines : defaultState.showLines,
           showHoles: typeof parsed?.showHoles === 'boolean' ? parsed.showHoles : defaultState.showHoles,
           isBackSide: typeof parsed?.isBackSide === 'boolean' ? parsed.isBackSide : defaultState.isBackSide,
+          forbiddenAreas,
         };
       },
     }
@@ -148,6 +170,7 @@ const App: React.FC = () => {
         showLines={state.showLines}
         showHoles={state.showHoles}
         isBackSide={state.isBackSide}
+        forbiddenAreas={state.forbiddenAreas}
         effectiveLeftMargin={effectiveLeftMargin}
         effectiveRightMargin={effectiveRightMargin}
         lineCount={lineCount}
