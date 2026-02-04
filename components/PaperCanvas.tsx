@@ -54,7 +54,10 @@ const PaperCanvas: React.FC<PaperCanvasProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [resizingId, setResizingId] = useState<string | null>(null);
   const dragState = useRef({ startY: 0, startTop: 0, lastX: 0 });
+  const resizeState = useRef({ startX: 0, startY: 0, startWidth: 0, startHeight: 0 });
+  const MIN_FORBIDDEN_SIZE_MM = 10;
 
   useEffect(() => {
     if (!draggingId) return;
@@ -83,6 +86,29 @@ const PaperCanvas: React.FC<PaperCanvasProps> = ({
     };
   }, [draggingId, mmToPx, onUpdateForbiddenArea]);
 
+  useEffect(() => {
+    if (!resizingId) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const dxMm = (e.clientX - resizeState.current.startX) / mmToPx;
+      const dyMm = (e.clientY - resizeState.current.startY) / mmToPx;
+      const nextWidth = Math.max(MIN_FORBIDDEN_SIZE_MM, resizeState.current.startWidth + dxMm);
+      const nextHeight = Math.max(MIN_FORBIDDEN_SIZE_MM, resizeState.current.startHeight + dyMm);
+      onUpdateForbiddenArea(resizingId, { width: nextWidth, height: nextHeight });
+    };
+
+    const handleMouseUp = () => {
+      setResizingId(null);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [resizingId, mmToPx, onUpdateForbiddenArea]);
+
   const handleForbiddenMouseDown = (e: React.MouseEvent, area: ForbiddenArea) => {
     e.preventDefault();
     dragState.current = {
@@ -91,6 +117,18 @@ const PaperCanvas: React.FC<PaperCanvasProps> = ({
       lastX: e.clientX,
     };
     setDraggingId(area.id);
+  };
+
+  const handleResizeMouseDown = (e: React.MouseEvent, area: ForbiddenArea) => {
+    e.preventDefault();
+    e.stopPropagation();
+    resizeState.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startWidth: area.width,
+      startHeight: area.height,
+    };
+    setResizingId(area.id);
   };
 
   return (
@@ -146,7 +184,12 @@ const PaperCanvas: React.FC<PaperCanvasProps> = ({
                 }}
                 contentEditable={false}
                 onMouseDown={(e) => handleForbiddenMouseDown(e, area)}
-              />
+              >
+                <div
+                  className="forbidden-resize-handle"
+                  onMouseDown={(e) => handleResizeMouseDown(e, area)}
+                />
+              </div>
             ))}
             <div
               ref={editorRef}
