@@ -220,6 +220,7 @@ const PaperCanvas: React.FC<PaperCanvasProps> = ({
                 color: '#334155',
                 padding: 0,
                 margin: 0,
+                zIndex: 1,
               }}
             />
           </div>
