@@ -1,11 +1,12 @@
 
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useRef, useMemo, useState } from 'react';
 import { B5_CONFIG, LINE_SPACING_OPTIONS } from './constants';
 import { AppState, ImageElement } from './types';
 import { polishText } from './services/geminiService';
 import Sidebar from './components/Sidebar';
 import PaperCanvas from './components/PaperCanvas';
 import useEditorText from './hooks/useEditorText';
+import useLocalStorageState from './hooks/useLocalStorageState';
 
 const App: React.FC = () => {
   const lineSpacing = LINE_SPACING_OPTIONS['8mm'];
@@ -17,46 +18,42 @@ const App: React.FC = () => {
     return Math.floor(availableHeight / lineSpacing);
   }, [lineSpacing]);
 
-  const [state, setState] = useState<AppState>(() => {
-    const defaultState: AppState = {
-      text: '\n'.repeat(initialLineCount - 1),
-      fontSize: 14,
-      fontFamily: 'serif',
-      spacingKey: '8mm',
-      images: [],
-      showLines: true,
-      showHoles: true,
-      isBackSide: false,
-    };
+  const defaultState: AppState = {
+    text: '\n'.repeat(initialLineCount - 1),
+    fontSize: 14,
+    fontFamily: 'serif',
+    spacingKey: '8mm',
+    images: [],
+    showLines: true,
+    showHoles: true,
+    isBackSide: false,
+  };
 
-    if (typeof window === 'undefined') {
-      return defaultState;
+  const [state, setState] = useLocalStorageState<AppState>(
+    STORAGE_KEY,
+    () => defaultState,
+    {
+      deserialize: (raw) => {
+        const parsed = JSON.parse(raw);
+        const spacingKey =
+          parsed?.spacingKey === '8mm' || parsed?.spacingKey === '7mm' || parsed?.spacingKey === '6mm'
+            ? parsed.spacingKey
+            : defaultState.spacingKey;
+        return {
+          ...defaultState,
+          ...parsed,
+          text: typeof parsed?.text === 'string' ? parsed.text : defaultState.text,
+          fontSize: typeof parsed?.fontSize === 'number' ? parsed.fontSize : defaultState.fontSize,
+          fontFamily: typeof parsed?.fontFamily === 'string' ? parsed.fontFamily : defaultState.fontFamily,
+          spacingKey,
+          images: Array.isArray(parsed?.images) ? parsed.images : defaultState.images,
+          showLines: typeof parsed?.showLines === 'boolean' ? parsed.showLines : defaultState.showLines,
+          showHoles: typeof parsed?.showHoles === 'boolean' ? parsed.showHoles : defaultState.showHoles,
+          isBackSide: typeof parsed?.isBackSide === 'boolean' ? parsed.isBackSide : defaultState.isBackSide,
+        };
+      },
     }
-
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (!raw) return defaultState;
-      const parsed = JSON.parse(raw);
-      const spacingKey =
-        parsed?.spacingKey === '8mm' || parsed?.spacingKey === '7mm' || parsed?.spacingKey === '6mm'
-          ? parsed.spacingKey
-          : defaultState.spacingKey;
-      return {
-        ...defaultState,
-        ...parsed,
-        text: typeof parsed?.text === 'string' ? parsed.text : defaultState.text,
-        fontSize: typeof parsed?.fontSize === 'number' ? parsed.fontSize : defaultState.fontSize,
-        fontFamily: typeof parsed?.fontFamily === 'string' ? parsed.fontFamily : defaultState.fontFamily,
-        spacingKey,
-        images: Array.isArray(parsed?.images) ? parsed.images : defaultState.images,
-        showLines: typeof parsed?.showLines === 'boolean' ? parsed.showLines : defaultState.showLines,
-        showHoles: typeof parsed?.showHoles === 'boolean' ? parsed.showHoles : defaultState.showHoles,
-        isBackSide: typeof parsed?.isBackSide === 'boolean' ? parsed.isBackSide : defaultState.isBackSide,
-      };
-    } catch {
-      return defaultState;
-    }
-  });
+  );
 
   const [isAiProcessing, setIsAiProcessing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -72,14 +69,6 @@ const App: React.FC = () => {
     const availableHeight = B5_CONFIG.height - B5_CONFIG.topMargin - B5_CONFIG.bottomMargin;
     return Math.floor(availableHeight / currentLineSpacing);
   }, [currentLineSpacing]);
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch (err) {
-      console.warn('Failed to persist to localStorage:', err);
-    }
-  }, [state]);
 
   const {
     editorRef,
