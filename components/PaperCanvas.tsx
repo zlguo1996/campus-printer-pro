@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { B5_CONFIG } from '../constants';
 import { ForbiddenArea, ImageElement } from '../types';
 import DraggableImage from './DraggableImage';
@@ -27,6 +27,7 @@ type PaperCanvasProps = {
   onCompositionEnd: (e: React.CompositionEvent<HTMLDivElement>) => void;
   onRemoveImage: (id: string) => void;
   onUpdateImage: (id: string, x: number, y: number) => void;
+  onUpdateForbiddenArea: (id: string, patch: Partial<ForbiddenArea>) => void;
 };
 
 const PaperCanvas: React.FC<PaperCanvasProps> = ({
@@ -49,7 +50,49 @@ const PaperCanvas: React.FC<PaperCanvasProps> = ({
   onCompositionEnd,
   onRemoveImage,
   onUpdateImage,
+  onUpdateForbiddenArea,
 }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const dragState = useRef({ startY: 0, startTop: 0, lastX: 0 });
+
+  useEffect(() => {
+    if (!draggingId) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      dragState.current.lastX = e.clientX;
+      const dyMm = (e.clientY - dragState.current.startY) / mmToPx;
+      const nextTop = Math.max(0, dragState.current.startTop + dyMm);
+      onUpdateForbiddenArea(draggingId, { top: nextTop });
+    };
+
+    const handleMouseUp = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        const side = (dragState.current.lastX - rect.left) < rect.width / 2 ? 'left' : 'right';
+        onUpdateForbiddenArea(draggingId, { side });
+      }
+      setDraggingId(null);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [draggingId, mmToPx, onUpdateForbiddenArea]);
+
+  const handleForbiddenMouseDown = (e: React.MouseEvent, area: ForbiddenArea) => {
+    e.preventDefault();
+    dragState.current = {
+      startY: e.clientY,
+      startTop: area.top,
+      lastX: e.clientX,
+    };
+    setDraggingId(area.id);
+  };
+
   return (
     <main className="flex-1 overflow-auto bg-slate-100 p-8 flex justify-center items-start">
       <div
@@ -91,17 +134,18 @@ const PaperCanvas: React.FC<PaperCanvasProps> = ({
           />
           <RedMarginLine show={showLines} isBackSide={isBackSide} />
 
-          <div className="relative w-full h-full">
+          <div ref={containerRef} className="relative w-full h-full">
             {forbiddenAreas.map(area => (
               <div
                 key={area.id}
-                className={`forbidden-area no-print ${area.side === 'left' ? 'float-left' : 'float-right'}`}
+                className={`forbidden-area no-print cursor-move ${area.side === 'left' ? 'float-left' : 'float-right'}`}
                 style={{
                   width: `${area.width}mm`,
                   height: `${area.height}mm`,
                   marginTop: `${area.top}mm`,
                 }}
                 contentEditable={false}
+                onMouseDown={(e) => handleForbiddenMouseDown(e, area)}
               />
             ))}
             <div

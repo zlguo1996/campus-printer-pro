@@ -142,9 +142,16 @@ const App: React.FC = () => {
   };
 
   const updateImagePos = (id: string, x: number, y: number) => {
+      setState(prev => ({
+        ...prev,
+        images: prev.images.map(img => img.id === id ? { ...img, x, y } : img)
+      }));
+    };
+
+  const updateForbiddenArea = (id: string, patch: Partial<ForbiddenArea>) => {
     setState(prev => ({
       ...prev,
-      images: prev.images.map(img => img.id === id ? { ...img, x, y } : img)
+      forbiddenAreas: prev.forbiddenAreas.map(area => area.id === id ? { ...area, ...patch } : area),
     }));
   };
 
@@ -185,6 +192,7 @@ const App: React.FC = () => {
         onCompositionEnd={handleCompositionEnd}
         onRemoveImage={removeImage}
         onUpdateImage={updateImagePos}
+        onUpdateForbiddenArea={updateForbiddenArea}
       />
     </div>
   );
