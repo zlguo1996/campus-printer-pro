@@ -7,16 +7,15 @@ import Sidebar from './components/Sidebar';
 import PaperCanvas from './components/PaperCanvas';
 import useEditorText from './hooks/useEditorText';
 import useLocalStorageState from './hooks/useLocalStorageState';
+import { getLineCount } from './utils/paper';
+import { mmToPx, ptToPx, MM_TO_PX } from './utils/units';
 
 const App: React.FC = () => {
   const lineSpacing = LINE_SPACING_OPTIONS['8mm'];
   const STORAGE_KEY = 'campus-b5-printer-pro:v1';
   
   // Calculate line count based on margins
-  const initialLineCount = useMemo(() => {
-    const availableHeight = B5_CONFIG.height - B5_CONFIG.topMargin - B5_CONFIG.bottomMargin;
-    return Math.floor(availableHeight / lineSpacing);
-  }, [lineSpacing]);
+  const initialLineCount = useMemo(() => getLineCount(B5_CONFIG, lineSpacing), [lineSpacing]);
 
   const defaultState: AppState = {
     text: '\n'.repeat(initialLineCount - 1),
@@ -59,16 +58,12 @@ const App: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentLineSpacing = LINE_SPACING_OPTIONS[state.spacingKey];
-  const mmToPx = 3.78; 
   const effectiveLeftMargin = state.isBackSide ? B5_CONFIG.rightMargin : B5_CONFIG.leftMargin;
   const effectiveRightMargin = state.isBackSide ? B5_CONFIG.leftMargin : B5_CONFIG.rightMargin;
-  const lineHeightPx = currentLineSpacing * mmToPx;
-  const fontSizePx = state.fontSize * (96 / 72);
+  const lineHeightPx = mmToPx(currentLineSpacing);
+  const fontSizePx = ptToPx(state.fontSize);
 
-  const lineCount = useMemo(() => {
-    const availableHeight = B5_CONFIG.height - B5_CONFIG.topMargin - B5_CONFIG.bottomMargin;
-    return Math.floor(availableHeight / currentLineSpacing);
-  }, [currentLineSpacing]);
+  const lineCount = useMemo(() => getLineCount(B5_CONFIG, currentLineSpacing), [currentLineSpacing]);
 
   const {
     editorRef,
@@ -160,7 +155,7 @@ const App: React.FC = () => {
         lineHeightPx={lineHeightPx}
         fontSizePx={fontSizePx}
         fontFamily={state.fontFamily}
-        mmToPx={mmToPx}
+        mmToPx={MM_TO_PX}
         editorRef={editorRef}
         onTextChange={handleTextChange}
         onCompositionStart={handleCompositionStart}
