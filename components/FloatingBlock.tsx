@@ -20,9 +20,14 @@ const FloatingBlockItem: React.FC<FloatingBlockProps> = ({
   onRemove,
   children,
 }) => {
+  const floatClass =
+    block.side === 'left' ? 'float-left clear-left' : 'float-right clear-right';
+
   return (
     <div
-      className={`floating-block no-print cursor-move ${block.side === 'left' ? 'float-left' : 'float-right'} ${className} ${isActive ? 'floating-block--active' : ''}`}
+      className={`floating-block no-print cursor-move ${floatClass} ${className} ${
+        isActive ? 'floating-block--active' : ''
+      }`}
       style={{
         marginTop: `${block.top}mm`,
         width: `${block.width}mm`,
