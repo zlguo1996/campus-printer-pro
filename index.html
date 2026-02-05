@@ -74,7 +74,15 @@
       line-height: inherit;
     }
 
-    .forbidden-area {
+    .floating-block {
+      position: relative;
+      box-sizing: border-box;
+      border-radius: 4px;
+      z-index: 2;
+      overflow: hidden;
+    }
+
+    .floating-block--forbidden {
       background-image: repeating-linear-gradient(
         45deg,
         rgba(239, 68, 68, 0.35) 0,
@@ -83,36 +91,65 @@
         transparent 6px
       );
       border: 1px solid rgba(239, 68, 68, 0.4);
-      position: relative;
-      box-sizing: border-box;
-      z-index: 2;
     }
 
-    .forbidden-resize-handle {
+    .floating-block--image {
+      border: 1px solid rgba(37, 99, 235, 0.25);
+      background: rgba(59, 130, 246, 0.06);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(2px);
+    }
+
+    .floating-block--active {
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35);
+    }
+
+    .floating-block__content {
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    .floating-resize-handle {
       position: absolute;
       right: -3px;
       bottom: -3px;
       width: 8px;
       height: 8px;
-      background: rgba(239, 68, 68, 0.8);
+      background: rgba(59, 130, 246, 0.8);
       border-radius: 2px;
       cursor: se-resize;
     }
 
-    .forbidden-remove-button {
+    .floating-remove-button {
       position: absolute;
       top: -6px;
       right: -6px;
       width: 16px;
       height: 16px;
       border-radius: 50%;
-      background: #ef4444;
+      background: #334155;
       color: #fff;
       font-size: 12px;
       line-height: 16px;
       text-align: center;
       border: none;
       cursor: pointer;
+      box-shadow: 0 5px 15px rgba(15, 23, 42, 0.25);
+    }
+
+    .floating-block--forbidden .floating-resize-handle {
+      background: rgba(239, 68, 68, 0.8);
+    }
+
+    .floating-block--forbidden .floating-remove-button {
+      background: #ef4444;
+    }
+
+    .floating-block--image .floating-remove-button {
+      background: #2563eb;
     }
   </style>
 <script type="importmap">

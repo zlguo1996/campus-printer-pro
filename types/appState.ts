@@ -1,10 +1,13 @@
-export interface ImageElement {
+export interface FloatingBlock {
   id: string;
-  url: string;
-  x: number; // in mm
-  y: number; // in mm
+  side: 'left' | 'right';
+  top: number; // in mm relative to writing area top
   width: number; // in mm
   height: number; // in mm
+}
+
+export interface ImageElement extends FloatingBlock {
+  url: string;
 }
 
 export interface AppState {
@@ -19,10 +22,4 @@ export interface AppState {
   forbiddenAreas: ForbiddenArea[];
 }
 
-export interface ForbiddenArea {
-  id: string;
-  side: 'left' | 'right';
-  top: number; // in mm
-  width: number; // in mm
-  height: number; // in mm
-}
+export type ForbiddenArea = FloatingBlock;

@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import { B5_CONFIG } from '../constants';
-import { ForbiddenArea, ImageElement } from '../types';
-import DraggableImage from './DraggableImage';
+import { ForbiddenArea, ImageElement, FloatingBlock } from '../types';
+import FloatingBlockItem from './FloatingBlock';
+import { useFloatingBlockControls } from '../hooks/useFloatingBlockControls';
 import HolesLayer from './layers/HolesLayer';
 import LineNumberLayer from './layers/LineNumberLayer';
 import RedMarginLine from './layers/RedMarginLine';
@@ -26,7 +27,7 @@ type PaperCanvasProps = {
   onCompositionStart: () => void;
   onCompositionEnd: (e: React.CompositionEvent<HTMLDivElement>) => void;
   onRemoveImage: (id: string) => void;
-  onUpdateImage: (id: string, x: number, y: number) => void;
+  onUpdateImage: (id: string, patch: Partial<FloatingBlock>) => void;
   onUpdateForbiddenArea: (id: string, patch: Partial<ForbiddenArea>) => void;
   onRemoveForbiddenArea: (id: string) => void;
 };
@@ -55,83 +56,11 @@ const PaperCanvas: React.FC<PaperCanvasProps> = ({
   onRemoveForbiddenArea,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [draggingId, setDraggingId] = useState<string | null>(null);
-  const [resizingId, setResizingId] = useState<string | null>(null);
-  const dragState = useRef({ startY: 0, startTop: 0, lastX: 0 });
-  const resizeState = useRef({ startX: 0, startY: 0, startWidth: 0, startHeight: 0 });
-  const MIN_FORBIDDEN_SIZE_MM = 10;
-
-  useEffect(() => {
-    if (!draggingId) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      dragState.current.lastX = e.clientX;
-      const dyMm = (e.clientY - dragState.current.startY) / mmToPx;
-      const nextTop = Math.max(0, dragState.current.startTop + dyMm);
-      onUpdateForbiddenArea(draggingId, { top: nextTop });
-    };
-
-    const handleMouseUp = () => {
-      if (containerRef.current) {
-        const rect = containerRef.current.getBoundingClientRect();
-        const side = (dragState.current.lastX - rect.left) < rect.width / 2 ? 'left' : 'right';
-        onUpdateForbiddenArea(draggingId, { side });
-      }
-      setDraggingId(null);
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [draggingId, mmToPx, onUpdateForbiddenArea]);
-
-  useEffect(() => {
-    if (!resizingId) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const dxMm = (e.clientX - resizeState.current.startX) / mmToPx;
-      const dyMm = (e.clientY - resizeState.current.startY) / mmToPx;
-      const nextWidth = Math.max(MIN_FORBIDDEN_SIZE_MM, resizeState.current.startWidth + dxMm);
-      const nextHeight = Math.max(MIN_FORBIDDEN_SIZE_MM, resizeState.current.startHeight + dyMm);
-      onUpdateForbiddenArea(resizingId, { width: nextWidth, height: nextHeight });
-    };
-
-    const handleMouseUp = () => {
-      setResizingId(null);
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [resizingId, mmToPx, onUpdateForbiddenArea]);
-
-  const handleForbiddenMouseDown = (e: React.MouseEvent, area: ForbiddenArea) => {
-    e.preventDefault();
-    dragState.current = {
-      startY: e.clientY,
-      startTop: area.top,
-      lastX: e.clientX,
-    };
-    setDraggingId(area.id);
-  };
-
-  const handleResizeMouseDown = (e: React.MouseEvent, area: ForbiddenArea) => {
-    e.preventDefault();
-    e.stopPropagation();
-    resizeState.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      startWidth: area.width,
-      startHeight: area.height,
-    };
-    setResizingId(area.id);
-  };
+  const { draggingId, resizingId, handleDragStart, handleResizeStart } = useFloatingBlockControls({
+    mmToPx,
+    minSizeMm: 10,
+    containerRef,
+  });
 
   return (
     <main className="flex-1 overflow-auto bg-slate-100 p-8 flex justify-center items-start">
@@ -145,16 +74,6 @@ const PaperCanvas: React.FC<PaperCanvasProps> = ({
         }}
       >
         <HolesLayer show={showHoles} isBackSide={isBackSide} />
-
-        {images.map(img => (
-          <DraggableImage
-            key={img.id}
-            img={img}
-            onRemove={() => onRemoveImage(img.id)}
-            onUpdate={onUpdateImage}
-            mmToPx={mmToPx}
-          />
-        ))}
 
         <div
           className="absolute overflow-hidden"
@@ -176,34 +95,33 @@ const PaperCanvas: React.FC<PaperCanvasProps> = ({
 
           <div ref={containerRef} className="relative w-full h-full">
             {forbiddenAreas.map(area => (
-              <div
+              <FloatingBlockItem
                 key={area.id}
-                className={`forbidden-area no-print cursor-move ${area.side === 'left' ? 'float-left' : 'float-right'}`}
-                style={{
-                  width: `${area.width}mm`,
-                  height: `${area.height}mm`,
-                  marginTop: `${area.top}mm`,
-                }}
-                contentEditable={false}
-                onMouseDown={(e) => handleForbiddenMouseDown(e, area)}
+                block={area}
+                className="floating-block--forbidden"
+                isActive={draggingId === area.id || resizingId === area.id}
+                onDragStart={(e, block) => handleDragStart(e, block, onUpdateForbiddenArea)}
+                onResizeStart={(e, block) => handleResizeStart(e, block, onUpdateForbiddenArea)}
+                onRemove={() => onRemoveForbiddenArea(area.id)}
+              />
+            ))}
+            {images.map(img => (
+              <FloatingBlockItem
+                key={img.id}
+                block={img}
+                className="floating-block--image"
+                isActive={draggingId === img.id || resizingId === img.id}
+                onDragStart={(e, block) => handleDragStart(e, block, onUpdateImage)}
+                onResizeStart={(e, block) => handleResizeStart(e, block, onUpdateImage)}
+                onRemove={() => onRemoveImage(img.id)}
               >
-                <button
-                  className="forbidden-remove-button"
-                  onMouseDown={(e) => e.stopPropagation()}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onRemoveForbiddenArea(area.id);
-                  }}
-                  contentEditable={false}
-                  type="button"
-                >
-                  ×
-                </button>
-                <div
-                  className="forbidden-resize-handle"
-                  onMouseDown={(e) => handleResizeMouseDown(e, area)}
+                <img
+                  src={img.url}
+                  alt="User upload"
+                  className="w-full h-full object-contain pointer-events-none select-none"
+                  draggable={false}
                 />
-              </div>
+              </FloatingBlockItem>
             ))}
             <div
               ref={editorRef}
